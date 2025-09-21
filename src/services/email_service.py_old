@@ -1,0 +1,90 @@
+import logging
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from typing import Dict, List, Any
+from datetime import datetime
+
+from src.config import AppConfig
+from src.models import ErrorAnalysis
+
+logger = logging.getLogger(__name__)
+
+class EmailService:
+    """Handles sending email reports."""
+
+    def __init__(self, config: AppConfig):
+        self.config = config.email
+
+    def _format_html_report(self, results_by_server: Dict[str, List[ErrorAnalysis]], timestamp: datetime) -> str:
+        """Formats the analysis results into an HTML report."""
+        html = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                h1 {{ color: #2c3e50; }}
+                h2 {{ color: #34495e; border-bottom: 2px solid #3498db; padding-bottom: 5px; }}
+                .server-block {{ margin-bottom: 20px; border: 1px solid #ccc; border-radius: 5px; padding: 15px; }}
+                .error-item {{ margin-bottom: 15px; padding: 10px; border-left: 5px solid #e74c3c; background-color: #f9f9f9; }}
+                .criticality-High {{ border-left-color: #c0392b; }}
+                .criticality-Medium {{ border-left-color: #f39c12; }}
+                .criticality-Low {{ border-left-color: #27ae60; }}
+                strong {{ color: #34495e; }}
+            </style>
+        </head>
+        <body>
+            <h1>Oracle Alert Log AI Analysis Report</h1>
+            <p><strong>Report Timestamp:</strong> {timestamp.strftime('%Y-%m-%d %H:%M:%S')} UTC</p>
+        """
+
+        for server_name, results in results_by_server.items():
+            if not results:
+                continue
+
+            html += f"""
+            <div class="server-block">
+                <h2>Server: {server_name}</h2>
+            """
+            for analysis in results:
+                html += f"""
+                <div class="error-item criticality-{analysis.criticality}">
+                    <p><strong>Error:</strong> <code>{analysis.error_line}</code></p>
+                    <p><strong>Explanation:</strong> {analysis.explanation}</p>
+                    <p><strong>Recommended Action:</strong> {analysis.recommended_action}</p>
+                    <p><strong>Criticality:</strong> {analysis.criticality}</p>
+                </div>
+                """
+            html += "</div>"
+
+        html += "</body></html>"
+        return html
+
+    async def send_comprehensive_report(self, results_by_server: Dict[str, List[ErrorAnalysis]], timestamp: datetime):
+        """Sends a comprehensive HTML report via SMTP."""
+        if not self.config.to_addresses:
+            logger.warning("No recipient addresses configured. Skipping email report.")
+            return
+
+        subject = self.config.subject_template.format(company_name="El Sewedy Electric")
+        html_body = self._format_html_report(results_by_server, timestamp)
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = self.config.from_address
+        msg['To'] = ", ".join(self.config.to_addresses)
+        msg.attach(MIMEText(html_body, 'html'))
+
+        try:
+            with smtplib.SMTP(self.config.smtp_server, self.config.smtp_port) as server:
+                if self.config.use_tls:
+                    server.starttls()
+                if self.config.username and self.config.password:
+                    server.login(self.config.username, self.config.password)
+                
+                server.sendmail(self.config.from_address, self.config.to_addresses, msg.as_string())
+                logger.info(f"Email report sent successfully to {', '.join(self.config.to_addresses)}")
+
+        except Exception as e:
+            logger.error(f"Failed to send email: {e}", exc_info=True)
+            raise

@@ -1,0 +1,238 @@
+# Save this file as webapp.py in your project's root directory (e.g., /u01/genspark/)
+import json
+import logging
+from flask import Flask, render_template_string, jsonify
+from datetime import datetime
+
+# Configure Flask app
+app = Flask(__name__)
+
+# --- HTML Template with Tailwind CSS and JavaScript ---
+# This is our user interface. It will auto-refresh every 15 seconds.
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle Alert Log Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/heroicons/2.0.18/24/outline/hero-icons.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        .criticality-Critical { border-left-color: #ef4444; }
+        .criticality-High { border-left-color: #f97316; }
+        .criticality-Medium { border-left-color: #f59e0b; }
+        .criticality-Low { border-left-color: #84cc16; }
+        .criticality-Informational { border-left-color: #3b82f6; }
+        /* For the animated spin on the refresh icon */
+        .loading-spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-300">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Oracle Alert Log Dashboard</h1>
+                <p class="text-gray-500">AI-powered analysis of database errors</p>
+            </div>
+            <div class="text-right mt-4 sm:mt-0">
+                 <div class="flex items-center justify-end space-x-2 text-sm text-gray-500">
+                    <svg id="refresh-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.18-3.185m-3.181 9.348a8.25 8.25 0 00-11.664 0l-3.18 3.185m3.181-9.348l-3.181-3.183a8.25 8.25 0 000-11.664l3.18-3.185" />
+                    </svg>
+                    <span>Last Updated: <span id="last-updated" class="font-semibold text-gray-700"></span></span>
+                 </div>
+            </div>
+        </header>
+
+        <!-- Summary Statistics -->
+        <div id="summary-stats" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- Stat cards will be inserted here -->
+        </div>
+
+        <!-- Main Content Grid -->
+        <main id="dashboard-content" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Server cards will be dynamically inserted here -->
+        </main>
+    </div>
+
+    <script>
+        function createAnalysisCard(analysis) {
+            const criticalityColors = {
+                'Critical': 'text-red-600', 'High': 'text-orange-600', 'Medium': 'text-amber-600',
+                'Low': 'text-lime-600', 'Informational': 'text-blue-600'
+            };
+            const textColor = criticalityColors[analysis.criticality] || 'text-gray-700';
+
+            return `
+                <div class="bg-gray-50 p-4 rounded-lg border-l-4 criticality-${analysis.criticality}">
+                    <p class="text-sm text-gray-600 font-mono break-all mb-3">${analysis.error_line}</p>
+                    <div class="space-y-2 text-sm">
+                        <p><strong>Explanation:</strong> ${analysis.explanation}</p>
+                        <p><strong>Action:</strong> ${analysis.recommended_action}</p>
+                        <div class="flex justify-between items-center pt-2">
+                           <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-xs font-semibold text-gray-700">
+                                Criticality: <span class="font-bold ${textColor}">${analysis.criticality}</span>
+                           </span>
+                           <span class="text-xs text-gray-400">${new Date(analysis.timestamp).toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function createStatCard(title, value, icon, colorClass) {
+            return `
+                <div class="bg-white p-5 rounded-xl shadow flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">${title}</p>
+                        <p class="text-2xl font-bold text-gray-800">${value}</p>
+                    </div>
+                    <div class="p-3 rounded-full ${colorClass}">
+                        ${icon}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function updateDashboard() {
+            const refreshIcon = document.getElementById('refresh-icon');
+            refreshIcon.classList.add('loading-spin');
+
+            try {
+                const response = await fetch('/api/data');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                
+                const contentDiv = document.getElementById('dashboard-content');
+                const summaryDiv = document.getElementById('summary-stats');
+                contentDiv.innerHTML = '';
+                summaryDiv.innerHTML = '';
+
+                document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+
+                if (Object.keys(data).length === 0) {
+                    contentDiv.innerHTML = '<div class="col-span-full text-center p-10 bg-white rounded-lg shadow-sm"><p class="text-gray-500">No data available. Run the monitor script to generate results.</p></div>';
+                    return;
+                }
+
+                // Calculate summary stats
+                const totalServers = Object.keys(data).length;
+                let serversWithErrors = 0;
+                let totalErrors = 0;
+                let criticalErrorCount = 0;
+
+                for (const serverName in data) {
+                    const analyses = data[serverName];
+                    if (analyses.length > 0) {
+                        serversWithErrors++;
+                        totalErrors += analyses.length;
+                        analyses.forEach(a => {
+                            if (a.criticality === 'Critical') criticalErrorCount++;
+                        });
+                    }
+                }
+
+                // Update summary stats UI
+                const serverIcon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-blue-800"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 00-.12-1.03l-2.268-9.64a3.375 3.375 0 00-3.285-2.602H7.923a3.375 3.375 0 00-3.285 2.602l-2.268 9.64a4.5 4.5 0 00-.12 1.03v.228m19.5 0a3 3 0 01-3 3H5.25a3 3 0 01-3-3m19.5 0a3 3 0 00-3-3H5.25a3 3 0 00-3 3m16.5 0h.008v.008h-.008v-.008z" /></svg>';
+                const errorIcon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-orange-800"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>';
+                const totalErrorsIcon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-yellow-800"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>';
+                const criticalIcon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-red-800"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 0v3.75m0-3.75h.008v.008H12v-.008zm0 0H9.75m-5.026 0a4.5 4.5 0 119.052 0 4.5 4.5 0 01-9.052 0z" /></svg>';
+
+                summaryDiv.innerHTML += createStatCard('Total Servers', totalServers, serverIcon, 'bg-blue-200');
+                summaryDiv.innerHTML += createStatCard('Servers with Errors', serversWithErrors, errorIcon, 'bg-orange-200');
+                summaryDiv.innerHTML += createStatCard('Total New Errors', totalErrors, totalErrorsIcon, 'bg-yellow-200');
+                summaryDiv.innerHTML += createStatCard('Critical Errors', criticalErrorCount, criticalIcon, 'bg-red-200');
+
+                // Build server cards
+                for (const serverName in data) {
+                    const analyses = data[serverName];
+                    const hasErrors = analyses.length > 0;
+                    const statusColor = hasErrors ? 'red' : 'green';
+                    
+                    const serverCard = document.createElement('div');
+                    serverCard.className = 'bg-white rounded-xl shadow-md overflow-hidden';
+                    
+                    let cardHTML = `
+                        <div class="p-4 flex justify-between items-center border-b border-gray-200">
+                            <div class="flex items-center space-x-3">
+                                <span class="flex h-3 w-3 relative">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-${statusColor}-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-${statusColor}-500"></span>
+                                </span>
+                                <h2 class="text-lg font-semibold text-gray-800">${serverName}</h2>
+                            </div>
+                            <span class="text-sm font-medium ${hasErrors ? 'text-red-600' : 'text-green-600'}">${analyses.length} Errors</span>
+                        </div>
+                    `;
+                    
+                    if (hasErrors) {
+                        cardHTML += `
+                            <details class="p-4">
+                                <summary class="cursor-pointer text-sm text-blue-600 hover:underline">Show Details</summary>
+                                <div class="mt-4 space-y-4">
+                                    ${analyses.map(createAnalysisCard).join('')}
+                                </div>
+                            </details>
+                        `;
+                    } else {
+                        cardHTML += '<p class="p-4 text-sm text-gray-500">✅ No new errors found.</p>';
+                    }
+                    
+                    serverCard.innerHTML = cardHTML;
+                    contentDiv.appendChild(serverCard);
+                }
+
+            } catch (error) {
+                console.error('Failed to fetch dashboard data:', error);
+                const contentDiv = document.getElementById('dashboard-content');
+                contentDiv.innerHTML = '<div class="col-span-full text-center p-10 bg-red-100 text-red-700 rounded-lg shadow-sm"><p>Error loading dashboard data. Please check the console and ensure the backend is running.</p></div>';
+            } finally {
+                refreshIcon.classList.remove('loading-spin');
+            }
+        }
+
+        // Update the dashboard every 15 seconds
+        setInterval(updateDashboard, 15000);
+        document.addEventListener('DOMContentLoaded', updateDashboard);
+    </script>
+</body>
+</html>
+"""
+
+# --- API Endpoint to Serve Data ---
+# This endpoint reads the JSON file and sends it to the frontend.
+@app.route('/api/data')
+def get_data():
+    """Reads and returns the content of monitoring_results.json."""
+    try:
+        with open('monitoring_results.json', 'r') as f:
+            data = json.load(f)
+        return jsonify(data)
+    except FileNotFoundError:
+        # If the file doesn't exist, return an empty object
+        logging.warning("monitoring_results.json not found. The monitor script may not have run yet.")
+        return jsonify({})
+    except Exception as e:
+        logging.error(f"Error reading data file: {e}")
+        return jsonify({"error": "Could not read data file."}), 500
+
+# --- Main Route to Render the Dashboard ---
+@app.route('/')
+def dashboard():
+    """Renders the main HTML dashboard page."""
+    return render_template_string(HTML_TEMPLATE)
+
+# --- Main execution ---
+if __name__ == '__main__':
+    # Set up basic logging for the web server
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    
+    # Run the Flask app. It will be accessible on all network interfaces on port 5001.
+    # Using a different port (5001) is good practice.
+    # `debug=True` is helpful for development as it auto-reloads on changes.
+    app.run(host='0.0.0.0', port=5001, debug=True)
+

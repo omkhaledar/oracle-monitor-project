@@ -1,0 +1,128 @@
+{
+    "EgyplastProd": [],
+    "EgyTechProd": [
+        {
+            "error_line": "opiodr aborting process unknown ospid (16433) as a result of ORA-28",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "EgyTechProd",
+            "timestamp": "2025-09-08T10:07:56.807440",
+            "analysis_success": false,
+            "processing_time": null
+        }
+    ],
+    "EPCProd": [],
+    "HCMProd": [],
+    "SDMProd": [],
+    "TransformersProd": [],
+    "UICProd": [],
+    "UMCProd": [],
+    "KSAProd_1": [],
+    "KSAProd_2": [
+        {
+            "error_line": "opiodr aborting process unknown ospid (82412) as a result of ORA-609",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "KSAProd_2",
+            "timestamp": "2025-09-08T10:08:29.058295",
+            "analysis_success": false,
+            "processing_time": null
+        }
+    ],
+    "AlgeriaProd": [
+        {
+            "error_line": "Non critical error ORA-48913 caught while writing to trace file \"/DISK11/app/oracle/product/diag/rdbms/cprod/cprod/trace/cprod_ora_1723041.trc\"",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "AlgeriaProd",
+            "timestamp": "2025-09-08T10:09:00.033988",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "Error message: ORA-48913: Writing into trace file failed, file size limit [10485760] reached",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "AlgeriaProd",
+            "timestamp": "2025-09-08T10:09:30.510162",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "Non critical error ORA-48913 caught while writing to trace file \"/DISK11/app/oracle/product/diag/rdbms/cprod/cprod/trace/cprod_ora_1723038.trc\"",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "AlgeriaProd",
+            "timestamp": "2025-09-08T10:10:00.961630",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "Error message: ORA-48913: Writing into trace file failed, file size limit [10485760] reached",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "AlgeriaProd",
+            "timestamp": "2025-09-08T10:10:31.375267",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "Non critical error ORA-48913 caught while writing to trace file \"/DISK11/app/oracle/product/diag/rdbms/cprod/cprod/trace/cprod_ora_1723044.trc\"",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "AlgeriaProd",
+            "timestamp": "2025-09-08T10:11:01.815050",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "Error message: ORA-48913: Writing into trace file failed, file size limit [10485760] reached",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "AlgeriaProd",
+            "timestamp": "2025-09-08T10:11:32.650877",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "Non critical error ORA-48913 caught while writing to trace file \"/DISK11/app/oracle/product/diag/rdbms/cprod/cprod/trace/cprod_ora_1723035.trc\"",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "AlgeriaProd",
+            "timestamp": "2025-09-08T10:12:03.094513",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "Error message: ORA-48913: Writing into trace file failed, file size limit [10485760] reached",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "AlgeriaProd",
+            "timestamp": "2025-09-08T10:12:39.193908",
+            "analysis_success": false,
+            "processing_time": null
+        }
+    ],
+    "TZProd": [],
+    "RMEProd": []
+}

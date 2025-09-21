@@ -1,0 +1,60 @@
+{
+    "EgyplastProd": [],
+    "EgyTechProd": [],
+    "EPCProd": [],
+    "HCMProd": [],
+    "SDMProd": [],
+    "TransformersProd": [],
+    "UICProd": [
+        {
+            "error_line": "PRODR12(3):Non critical error ORA-48913 caught while writing to trace file \"/u02/oracle/PRODR12/oraInventory/diag/rdbms/pcdb/pcdb/trace/pcdb_ora_9332.trc\"",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "UICProd",
+            "timestamp": "2025-08-27T10:42:29.869268",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "Error message: ORA-48913: Writing into trace file failed, file size limit [10485760] reached",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "UICProd",
+            "timestamp": "2025-08-27T10:43:00.716116",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "PRODR12(3):ORA-00060: Deadlock detected. See Note 60.1 at My Oracle Support for Troubleshooting ORA-60 Errors. More info in file /u02/oracle/PRODR12/oraInventory/diag/rdbms/pcdb/pcdb/trace/pcdb_ora_9332.trc.",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "UICProd",
+            "timestamp": "2025-08-27T10:43:31.175599",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "PRODR12(3):ORA-1652: unable to extend temp segment by 128 in tablespace TEMP2 [PRODR12]",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "UICProd",
+            "timestamp": "2025-08-27T10:44:01.920578",
+            "analysis_success": false,
+            "processing_time": null
+        }
+    ],
+    "UMCProd": [],
+    "KSAProd_1": [],
+    "KSAProd_2": [],
+    "AlgeriaProd": [],
+    "TZProd": [],
+    "RMEProd": []
+}

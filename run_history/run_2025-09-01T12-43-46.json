@@ -1,0 +1,27 @@
+{
+    "EgyplastProd": [],
+    "EgyTechProd": [],
+    "EPCProd": [],
+    "HCMProd": [
+        {
+            "error_line": "opiodr aborting process unknown ospid (164247) as a result of ORA-28",
+            "explanation": "The alert log entry indicates an abrupt termination of a process with an unknown operating system process ID (ospid 164247) by the Oracle process monitor (opiodr).  The ORA-28 error code is incomplete and insufficient for accurate diagnosis. This suggests a serious internal Oracle error, possibly related to a corrupted process, memory issue, or kernel problem. The lack of a full ORA- error code makes precise identification challenging. It's highly probable that this points to a critical system instability that may require immediate attention.",
+            "recommended_action": "1. Immediately check the complete alert log for preceding errors and further details to identify the root cause.  2. Review the Oracle instance logs and trace files for more information related to ospid 164247. 3. Check the operating system's event logs for concurrent errors or crashes. 4.  Restart the database instance after ensuring all background processes are functioning correctly.  5. If the problem persists, consider collecting a support case with Oracle Support, providing the complete alert log, trace files, and OS logs for analysis.",
+            "criticality": "Critical",
+            "reference": "N/A",
+            "server": "HCMProd",
+            "timestamp": "2025-09-01T10:43:46.564957",
+            "analysis_success": true,
+            "processing_time": null
+        }
+    ],
+    "SDMProd": [],
+    "TransformersProd": [],
+    "UICProd": [],
+    "UMCProd": [],
+    "KSAProd_1": [],
+    "KSAProd_2": [],
+    "AlgeriaProd": [],
+    "TZProd": [],
+    "RMEProd": []
+}

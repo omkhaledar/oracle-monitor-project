@@ -1,0 +1,101 @@
+import os
+import logging
+from pathlib import Path
+from typing import List
+import aiofiles
+
+from src.config import AppConfig
+
+logger = logging.getLogger(__name__)
+
+class LogFileMonitor:
+    """Monitors Oracle log files for new error entries using server-specific state files."""
+
+    def __init__(self, config: AppConfig):
+        self.config = config
+
+    def _load_state(self, state_file_path: Path) -> int:
+        """Loads the last read position from a server-specific state file."""
+        if not state_file_path.exists():
+            logger.info(f"State file not found at {state_file_path}. Will start reading log from the beginning.")
+            return 0
+        try:
+            with open(state_file_path, 'r') as f:
+                content = f.read().strip()
+                position = int(content) if content else 0
+                logger.info(f"Successfully loaded read position {position} from {state_file_path}.")
+                return position
+        except (ValueError, IOError) as e:
+            logger.warning(f"Could not read or parse state file {state_file_path}, starting from scratch: {e}")
+            return 0
+
+    def _save_state(self, state_file_path: Path, position: int):
+        """Saves the current read position to a server-specific state file."""
+        try:
+            with open(state_file_path, 'w') as f:
+                f.write(str(position))
+            logger.info(f"Successfully saved read position {position} to {state_file_path}.")
+        except IOError as e:
+            logger.error(f"Failed to save state file {state_file_path}: {e}")
+
+    async def read_new_errors(self, server_name: str) -> List[str]:
+        """Reads new lines from a log file since the last run for a specific server."""
+        # Get the relative path from the config
+        log_file_relative_path = self.config.servers.get(server_name)
+        if not log_file_relative_path:
+            logger.error(f"No log file path configured for server: {server_name}")
+            return []
+
+        # --- CORRECTED PATH CONSTRUCTION ---
+        base_dir = Path(self.config.monitoring.base_dir)
+        try:
+            parts = Path(log_file_relative_path).parts
+            # Construct path to the 'db' directory
+            db_path = base_dir / parts[0] / parts[1]
+            # Construct the full path to the log file and the state file
+            log_file_path = db_path / 'alert_log' / parts[2]
+            state_file_path = db_path / "Alertlog_last_read.txt"
+        except IndexError:
+            logger.error(f"Configuration for server '{server_name}' has an invalid path format: '{log_file_relative_path}'. Expected 'SERVER/db/FILENAME.log'.")
+            return []
+
+
+        if not log_file_path.exists():
+            logger.error(f"Log file not found at the configured path: {log_file_path}")
+            return []
+        
+        # Load the last position from its specific state file
+        last_position = self._load_state(state_file_path)
+        logger.info(f"Monitoring '{log_file_path}' for '{server_name}', starting from position {last_position}.")
+
+        new_errors = []
+
+        try:
+            async with aiofiles.open(log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                # Check if the log file has been rotated/shrunk
+                file_size = os.fstat(f.fileno()).st_size
+                if last_position > file_size:
+                    logger.warning(f"Log file '{log_file_path}' appears to have been rotated or truncated. "
+                                   f"Resetting read position from {last_position} to 0.")
+                    last_position = 0
+
+                await f.seek(last_position)
+                
+                async for line in f:
+                    if "ORA-" in line:
+                        new_errors.append(line.strip())
+                
+                # Save the new position to its specific state file
+                current_position = await f.tell()
+                if current_position != last_position:
+                    self._save_state(state_file_path, current_position)
+                else:
+                    logger.info(f"No new content found for {server_name}. Position remains {last_position}.")
+
+        except FileNotFoundError:
+            logger.error(f"Log file not found at path: {log_file_path}")
+        except Exception as e:
+            logger.error(f"Error reading log file for {server_name}: {e}", exc_info=True)
+
+        return new_errors
+

@@ -1,0 +1,61 @@
+{
+    "EgyplastProd": [],
+    "EgyTechProd": [],
+    "EPCProd": [],
+    "HCMProd": [],
+    "SDMProd": [
+        {
+            "error_line": "ORA-01555 caused by SQL statement below (SQL ID: f2bwkb8qcf28w, Query Duration=7530 sec, SCN: 0x068b.ef30781c):",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "SDMProd",
+            "timestamp": "2025-08-27T11:12:51.760376",
+            "analysis_success": false,
+            "processing_time": null
+        }
+    ],
+    "TransformersProd": [],
+    "UICProd": [
+        {
+            "error_line": "PRODR12(3):ORA-1652: unable to extend temp segment by 128 in tablespace TEMP1 [PRODR12]",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "UICProd",
+            "timestamp": "2025-08-27T11:13:22.411868",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "PRODR12(3):ORA-1652: unable to extend temp segment by 128 in tablespace TEMP1 [PRODR12]",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "UICProd",
+            "timestamp": "2025-08-27T11:13:53.728870",
+            "analysis_success": false,
+            "processing_time": null
+        },
+        {
+            "error_line": "PRODR12(3):  Result = ORA-0",
+            "explanation": "Error: Gemini API failed after 3 retries or circuit breaker is open.",
+            "recommended_action": "Check network connectivity and API key.",
+            "criticality": "Medium",
+            "reference": "N/A",
+            "server": "UICProd",
+            "timestamp": "2025-08-27T11:14:24.182862",
+            "analysis_success": false,
+            "processing_time": null
+        }
+    ],
+    "UMCProd": [],
+    "KSAProd_1": [],
+    "KSAProd_2": [],
+    "AlgeriaProd": [],
+    "TZProd": [],
+    "RMEProd": []
+}

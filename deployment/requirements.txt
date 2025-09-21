@@ -1,0 +1,6 @@
+# Core application dependencies
+aiohttp
+aiofiles
+PyYAML
+tenacity
+

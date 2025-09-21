@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+"""
+Oracle Alert Log Monitor - Enhanced Production Version
+Monitors Oracle database alert logs across multiple servers with AI analysis.
+
+Features:
+- Asynchronous processing for improved performance
+- Circuit breaker pattern for API resilience
+- Comprehensive error handling and logging
+- Health monitoring and metrics collection
+- Secure configuration management
+- Rate limiting and connection pooling
+"""
+
+import asyncio
+import logging
+import time
+import json # <-- ADD THIS IMPORT
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional
+
+import aiohttp
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+from src.config import ConfigManager, get_config
+from src.models import ErrorAnalysis, MonitoringMetrics, HealthStatus
+from src.services.ai_analyzer import GeminiAnalyzer
+from src.services.email_service import EmailService
+from src.services.file_monitor import LogFileMonitor
+from src.services.health_checker import HealthChecker
+from src.utils.metrics import MetricsCollector
+from src.utils.security import CircuitBreaker, RateLimiter
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+class OracleMonitor:
+    """Main Oracle Alert Log monitoring application."""
+    
+    def __init__(self):
+        self.config = get_config()
+        self.metrics_collector = MetricsCollector()
+        self.health_checker = HealthChecker(self.config)
+        self.circuit_breaker = CircuitBreaker(
+            failure_threshold=self.config.ai.circuit_breaker_threshold,
+            reset_timeout=self.config.ai.circuit_breaker_reset_timeout
+        )
+        self.rate_limiter = RateLimiter(
+            rate=self.config.ai.rate_limit_requests,
+            per=self.config.ai.rate_limit_period
+        )
+
+    # --- NEW FUNCTION TO SAVE RESULTS ---
+    def _save_results_to_json(self, results: Dict[str, List[ErrorAnalysis]]):
+        """Saves the monitoring results to a JSON file for the web UI."""
+        logger.info("Saving results to monitoring_results.json for the web UI.")
+        try:
+            # Convert all ErrorAnalysis objects to dictionaries
+            serializable_results = {}
+            for server, analyses in results.items():
+                serializable_results[server] = [a.to_dict() for a in analyses]
+
+            with open('monitoring_results.json', 'w') as f:
+                json.dump(serializable_results, f, indent=4)
+            logger.info("Successfully saved results to JSON.")
+        except Exception as e:
+            logger.error(f"Failed to save results to JSON file: {e}")
+    
+    async def run_monitoring_cycle(self) -> MonitoringMetrics:
+        """Execute a complete monitoring cycle."""
+        start_time = time.time()
+        logger.info("Starting Oracle Alert Log monitoring cycle")
+        
+        # Perform health check
+        health_status = await self.health_checker.check_system_health()
+        if health_status['overall_status'] == HealthStatus.UNHEALTHY:
+            logger.error("System health check failed, aborting monitoring cycle")
+            logger.error(f"Health issues: {health_status}")
+            return self._create_failed_metrics(start_time, "System unhealthy")
+        
+        all_results: Dict[str, List[ErrorAnalysis]] = {}
+        total_errors = 0
+        api_calls_made = 0
+        api_failures = 0
+        
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=self.config.ai.timeout),
+            connector=aiohttp.TCPConnector(limit=10, limit_per_host=5)
+        ) as session:
+            
+            # Initialize services
+            ai_analyzer = GeminiAnalyzer(
+                session=session,
+                config=self.config,
+                circuit_breaker=self.circuit_breaker,
+                rate_limiter=self.rate_limiter
+            )
+            file_monitor = LogFileMonitor(self.config)
+            
+            # Process each server
+            for server_name in self.config.servers.keys():
+                logger.info(f"Processing server: {server_name}")
+                
+                try:
+                    # Read new errors from log file
+                    errors = await file_monitor.read_new_errors(server_name)
+                    
+                    if not errors:
+                        logger.info(f"No new errors found for {server_name}")
+                        all_results[server_name] = []
+                        continue
+                    
+                    logger.info(f"Found {len(errors)} new errors for {server_name}")
+                    total_errors += len(errors)
+                    
+                    # Analyze errors with AI
+                    server_results = []
+                    for error_line in errors:
+                        try:
+                            await self.rate_limiter.acquire()
+                            api_calls_made += 1
+                            
+                            analysis = await ai_analyzer.analyze_error(
+                                error_line=error_line,
+                                server_name=server_name
+                            )
+                            server_results.append(analysis)
+                            
+                        except Exception as e:
+                            api_failures += 1
+                            logger.error(f"Failed to analyze error for {server_name}: {e}")
+                            # Create failed analysis record
+                            failed_analysis = ErrorAnalysis(
+                                error_line=error_line,
+                                explanation=f"Analysis failed: {str(e)}",
+                                recommended_action="Manual review required",
+                                criticality="Medium",
+                                reference="N/A",
+                                server=server_name,
+                                timestamp=datetime.utcnow(),
+                                analysis_success=False
+                            )
+                            server_results.append(failed_analysis)
+                    
+                    all_results[server_name] = server_results
+                    
+                except Exception as e:
+                    logger.error(f"Error processing server {server_name}: {e}")
+                    all_results[server_name] = []
+        
+        # --- SAVE RESULTS TO JSON BEFORE SENDING EMAIL ---
+        self._save_results_to_json(all_results)
+
+        # Generate and send report if errors were found
+        if total_errors > 0:
+            try:
+                email_service = EmailService(self.config)
+                await email_service.send_comprehensive_report(
+                    results_by_server=all_results,
+                    timestamp=datetime.utcnow()
+                )
+                logger.info("Email report sent successfully")
+            except Exception as e:
+                logger.error(f"Failed to send email report: {e}")
+        else:
+            logger.info("No new errors found across all servers")
+        
+        # Create and record metrics
+        processing_time = time.time() - start_time
+        metrics = MonitoringMetrics(
+            timestamp=datetime.utcnow(),
+            total_servers=len(self.config.servers),
+            servers_with_errors=len([r for r in all_results.values() if r]),
+            total_errors=total_errors,
+            processing_time=processing_time,
+            api_calls_made=api_calls_made,
+            api_failures=api_failures,
+            success=True
+        )
+        
+        self.metrics_collector.record_run(metrics)
+        logger.info(f"Monitoring cycle completed in {processing_time:.2f}s")
+        
+        return metrics
+    
+    def _create_failed_metrics(self, start_time: float, reason: str) -> MonitoringMetrics:
+        """Create metrics for a failed monitoring cycle."""
+        return MonitoringMetrics(
+            timestamp=datetime.utcnow(),
+            total_servers=len(self.config.servers),
+            servers_with_errors=0,
+            total_errors=0,
+            processing_time=time.time() - start_time,
+            api_calls_made=0,
+            api_failures=0,
+            success=False,
+            failure_reason=reason
+        )
+
+async def main():
+    """Main application entry point."""
+    logger.info("Oracle Alert Log Monitor starting up...")
+    
+    try:
+        monitor = OracleMonitor()
+        
+        # Run single monitoring cycle
+        metrics = await monitor.run_monitoring_cycle()
+        
+        # Log summary
+        if metrics.success:
+            logger.info(
+                f"Monitoring completed successfully: "
+                f"{metrics.total_errors} errors found on "
+                f"{metrics.servers_with_errors}/{metrics.total_servers} servers"
+            )
+        else:
+            logger.error(f"Monitoring failed: {metrics.failure_reason}")
+            
+    except KeyboardInterrupt:
+        logger.info("Monitoring interrupted by user")
+    except Exception as e:
+        logger.error(f"Unexpected error in main: {e}", exc_info=True)
+        raise
+
+if __name__ == '__main__':
+    # Compatible with Python 3.6
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+

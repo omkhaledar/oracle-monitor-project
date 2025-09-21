@@ -1,0 +1,45 @@
+# Main configuration for the Oracle Alert Log Monitor
+
+company_name: "El Sewedy Electric"
+
+# List of servers to monitor.
+# The key is a friendly name for the server, and the value is the name of the alert log file.
+'EgyplastProd': 'EgyplastProd/db/alert_orcl19.log',
+                'EgyTechProd': 'EgyTechProd/db/alert_PROD.log',
+                'EPCProd': 'EPCProd/db/alert_PRODEBS.log',
+                'HCMProd': 'HCMProd/db/alert_PRODEBS.log',
+                'SDMProd': 'SDMProd/db/alert_PROD.log',
+                'TransformersProd': 'TransformersProd/db/alert_CPROD.log',
+                'UICProd': 'UICProd/db/alert_pcdb.log',
+                'UMCProd': 'UMCProd/db//alert_PROD.log',
+                'KSAProd_1': 'KSAProd_1/db/alert_PRODCDB1.log',
+                'KSAProd_2': 'KSAProd_2/db/alert_PRODCDB2.log',
+                'AlgeriaProd': 'AlgeriaProd/db/alert_cprod.log',
+                'TZProd': 'TZProd/db/alert_PRODTZ.log',
+                'RMEProd': 'RMEProd/db/alert_RMEDB.log'
+
+# Configuration for the AI analysis service (e.g., Gemini)
+ai:
+  # IMPORTANT: The API key should be set via the GEMINI_API_KEY environment variable, not here.
+  api_key: "AIzaSyBXC7pZRNcOHv-9aB7jLVchea1jbMayrMI"
+  model: "gemini-1.5-flash"
+  timeout: 90
+  max_retries: 3
+  rate_limit_requests: 10
+  rate_limit_period: 60 # in seconds
+
+# Configuration for sending email reports
+email:
+  smtp_server: "10.0.12.152"
+  smtp_port: 587
+  # Set username/password via SMTP_USER and SMTP_PASS environment variables if needed
+  from_address: "omr.khaled@elsewedy.com"
+  to_addresses:
+    - "omr.khaled@elsewedy.com"
+
+# General monitoring settings
+monitoring:
+  # The base directory where Oracle logs are located. Can be overridden by ORACLE_BASE_DIR env var.
+  base_dir: "/u01"
+  # Logging level. Can be overridden by LOG_LEVEL env var.
+  log_level: "INFO"
