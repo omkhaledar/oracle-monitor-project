@@ -21,7 +21,7 @@ company_name: "El Sewedy Electric"
 # Configuration for the AI analysis service (e.g., Gemini)
 ai:
   # IMPORTANT: The API key should be set via the GEMINI_API_KEY environment variable, not here.
-  api_key: "GEMINI_API_KEY"
+  
   model: "gemini-1.5-flash"
   timeout: 90
   max_retries: 3
